@@ -80,12 +80,8 @@ def add_semicolons(data):
 
     return data
 
-def remove_doubtful_stuff(data):
-    data = re.sub(r'nvarchar\s*\(\d*\)', 'nvarchar', data, flags=re.M)
-    return data
-
 def replace_keywords(data):
-    return re.sub(r'(?P<keyword>Value|Date)', 'Mod\g<keyword>', data, flags=re.M)
+    return re.sub(r'(?P<keyword>Value|Date|Key)', 'Mod\g<keyword>', data, flags=re.M)
 
 def remove_index_include_columns(data):
     return re.sub('(?P<create_part>CREATE\s+(UNIQUE\s+)?INDEX(.*?)\))\s+INCLUDE(.*?)\)', '\g<create_part>', data, flags=re.M | re.S)

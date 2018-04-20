@@ -13,7 +13,6 @@ def transform_schema(filename):
     data = remove_asc_primary_keys(data)
     data = remove_textimage_on(data)
     data = remove_index_include_columns(data)
-    data = remove_doubtful_stuff(data)
     data = add_semicolons_remove_on_primary(data)
 
     data = replace_keywords(data)
