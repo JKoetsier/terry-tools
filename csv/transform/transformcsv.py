@@ -2,23 +2,27 @@ import sys
 import os
 import re
 
-linebatch = 500
+linebatchsize = 500
 
 '''
 Changes occurrences of the format "20/12/2016 20:08:51 +00:00" or "20/12/2016 20:08:51" to
 "2016-12-20 20:08:51"
 '''
+
+
 def transformdates(line: str):
     return re.sub(r'"(?P<day>\d+)/(?P<month>\d+)/(?P<year>\d+) (?P<time>\d+:\d+:\d+)( \+\d+:\d+)?"',
-                     "\"\g<year>-\g<month>-\g<day> \g<time>\"", line)
+                  "\"\g<year>-\g<month>-\g<day> \g<time>\"", line)
 
 
 def transformemptystrings(line: str) -> str:
     return re.sub(r'""', "NULL", line)
 
+
 def transformbooleans(line: str) -> str:
-    line = re.sub('r"true"', "1", line, flags=re.I)
-    return re.sub('r"false"', "0", line, flags=re.I)
+    line = re.sub(r'"true"', "1", line, flags=re.I)
+    return re.sub(r'"false"', "0", line, flags=re.I)
+
 
 def transformline(line: str) -> str:
     result = line
@@ -47,7 +51,7 @@ def transformcsv(file: str, outputdir: str):
             for inputline in inputlines:
                 outputbuffer.append(transformline(inputline))
 
-                if len(outputbuffer) > linebatch:
+                if len(outputbuffer) > linebatchsize:
                     outputfile.writelines(outputbuffer)
                     outputbuffer = []
 
