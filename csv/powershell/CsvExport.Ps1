@@ -1,6 +1,6 @@
 $server = "WIN-N7N4MEN8F6G"
 $database = "AccBiqh"
-$tablequery = "SELECT name from sys.tables"
+$tablequery = "select name from sys.tables where schema_id in (select schema_id from sys.schemas where name = 'dbo') and name != 'sysdiagrams'";
 $directory = "C:\Users\Administrator\Documents\flatfile_export"
 
 #Delcare Connection Variables
@@ -40,10 +40,6 @@ foreach ($Row in $DataSet.Tables[0].Rows)
     $tmpFile = $tmpdir + "\" + $filename
 
     if (!(Test-Path $extractFile -PathType Leaf)) {
-        if ($tableName -eq "sysdiagrams") {
-            continue
-        }
-
         Write-Host $extractFile
 
         $queryData = "SELECT * FROM [$tableName]"

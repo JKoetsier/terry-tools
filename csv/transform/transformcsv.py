@@ -13,18 +13,26 @@ def transformdates(line: str):
                      "\"\g<year>-\g<month>-\g<day> \g<time>\"", line)
 
 
-def transformemptystrings(line: str):
+def transformemptystrings(line: str) -> str:
     return re.sub(r'""', "NULL", line)
+
+def transformbooleans(line: str) -> str:
+    line = re.sub('r"true"', "1", line, flags=re.I)
+    return re.sub('r"false"', "0", line, flags=re.I)
 
 def transformline(line: str) -> str:
     result = line
 
     result = transformdates(result)
     result = transformemptystrings(result)
+    result = transformbooleans(result)
+
     return result
 
 
 def transformcsv(file: str, outputdir: str):
+    print("Transforming CSV {}".format(file))
+
     filename = file.split("/")[-1]
     dstfile = outputdir + "/" + filename
 
@@ -44,9 +52,13 @@ def transformcsv(file: str, outputdir: str):
                     outputbuffer = []
 
             outputfile.writelines(outputbuffer)
+            print("Written to {}".format(dstfile))
 
 
-def transformcsvfiles(directory):
+def transformcsvfiles(directory: str):
+    if directory[-1] == "/":
+        directory = directory[0:-1]
+
     outputdir = directory + "/output"
 
     if not os.path.exists(outputdir):
@@ -61,7 +73,7 @@ def transformcsvfiles(directory):
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Call program with directory as parameter:")
-        print("%s directory".format(sys.argv[0]))
+        print("{} directory".format(sys.argv[0]))
         exit(1)
 
     transformcsvfiles(sys.argv[1])
