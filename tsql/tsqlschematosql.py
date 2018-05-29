@@ -1,4 +1,6 @@
-from functions import *
+from .functions import *
+
+import sys
 
 
 def transform_schema(filename):

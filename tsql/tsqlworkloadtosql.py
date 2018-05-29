@@ -1,5 +1,7 @@
-from functions import *
+from .functions import *
 
+import re
+import sys
 
 def extract_vars(query):
     vardecls = re.findall(r'(?P<varname>@(\w*?)\d+)=(?P<value>.*?)(,|$)', query)
