@@ -20,7 +20,12 @@ NAME=`echo "$FILENAME" | cut -d'.' -f1`
 EXT=`echo "$FILENAME" | cut -d'.' -f2`
 
 HEADER=$(head -1 $FILENAME)
+
 for file in x*; do
-    cat <(echo $HEADER) $file > "$NAME.$file.$EXT"
-    rm $file
+    if [ "$(head -1 $file)" != "$HEADER" ]; then
+	cat <(echo $HEADER) $file > $file
+    fi
+    mv $file "$NAME.$file.$EXT"
 done
+
+mv $FILENAME "$FILENAME.full"
