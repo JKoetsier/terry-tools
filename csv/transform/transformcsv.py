@@ -16,9 +16,7 @@ def transformdates(line: str):
 
 
 def transformemptystrings(line: str) -> str:
-    result = re.sub(r',"",', ",NULL,", line)
-    result = re.sub(r',""$', ",NULL", result)
-    return result
+    return re.sub(r',(""(?=,)|""$)', ",NULL", line)
 
 
 def transformbooleans(line: str) -> str:
@@ -71,7 +69,7 @@ def transformcsvfiles(directory: str):
 
     for i, filename in enumerate(files):
         transformcsv(directory + "/" + filename, outputdir)
-        print("{:3}/{} {} done".format(i, len(files), filename))
+        print("{:3}/{} {} done".format(i + 1, len(files), filename))
 
 
 if __name__ == "__main__":
