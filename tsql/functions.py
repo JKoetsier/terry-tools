@@ -92,8 +92,8 @@ def add_semicolons(data):
     return data
 
 
-def replace_keywords(data):
-    return re.sub(r'(?P<ws>\s)(?P<keyword>(Value|Date|Key))', '\g<ws>Mod\g<keyword>', data, flags=re.M)
+def quote_keywords(data):
+    return re.sub(r'(?P<ws>\s)(?P<keyword>(Value|Date|Key))(?P<wsafter>\s)', '\g<ws>"\g<keyword>"\g<wsafter>', data, flags=re.M)
 
 
 def remove_index_include_columns(data):

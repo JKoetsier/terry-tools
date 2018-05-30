@@ -1,4 +1,4 @@
-from .functions import *
+from functions import *
 
 import sys
 
@@ -18,7 +18,7 @@ def transform_schema(filename):
     data = remove_index_include_columns(data)
     data = add_semicolons_remove_on_primary(data)
 
-    data = replace_keywords(data)
+    data = quote_keywords(data)
     data = add_semicolons(data)
 
     data = remove_constraint_defs(data)
