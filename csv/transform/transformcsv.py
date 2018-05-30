@@ -37,8 +37,6 @@ def transformline(line: str) -> str:
 
 
 def transformcsv(file: str, outputdir: str):
-    print("Transforming CSV {}".format(file))
-
     filename = file.split("/")[-1]
     dstfile = outputdir + "/" + filename
 
@@ -58,7 +56,6 @@ def transformcsv(file: str, outputdir: str):
                     outputbuffer = []
 
             outputfile.writelines(outputbuffer)
-            print("Written to {}".format(dstfile))
 
 
 def transformcsvfiles(directory: str):
@@ -70,9 +67,11 @@ def transformcsvfiles(directory: str):
     if not os.path.exists(outputdir):
         os.mkdir(outputdir)
 
-    for filename in os.listdir(directory):
-        if os.path.isfile(directory + "/" + filename) and filename.endswith(".csv"):
-            transformcsv(directory + "/" + filename, outputdir)
+    files = [ f for f in os.listdir(directory) if os.path.isfile(directory + "/" + f) and f.endswith(".csv") ]
+
+    for i, filename in enumerate(files):
+        transformcsv(directory + "/" + filename, outputdir)
+        print("{:3}/{} {} done".format(i, len(files), filename))
 
 
 if __name__ == "__main__":
