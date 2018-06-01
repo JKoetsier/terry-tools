@@ -56,42 +56,54 @@ def transformcsv(file: str, outputdir: str) -> int:
     if os.path.exists(dstfile):
         os.remove(dstfile)
 
-    ## Per line
-    # with open(file, "r") as inputfile:
-    #     with open(dstfile, "a") as outputfile:
-    #         outputbuffer = []
-    #         for inputline in inputfile:
-    #             outputbuffer.append(transformline(inputline))
-    #
-    #             if len(outputbuffer) > outputbuffersize_lines:
-    #                 outputfile.writelines(outputbuffer)
-    #                 outputbuffer = []
-    #
-    #         outputfile.writelines(outputbuffer)
-
-    ## Test with islice
-
     totallines = 0
+
+    ## Per line
     with open(file, "r") as inputfile:
         with open(dstfile, "a") as outputfile:
             outputbuffer = []
+            for inputline in inputfile:
+                outputbuffer.append(transformline(inputline))
 
-            while True:
-                inputlines = list(itertools.islice(inputfile, inputchunck))
-                totallines += len(inputlines)
-
-                if not inputlines:
-                    break
-
-
-                for inputline in inputlines:
-                    outputbuffer.append(transformline(inputline))
-
-                    if len(outputbuffer) > outputbuffersize_lines:
-                        outputfile.writelines(outputbuffer)
-                        outputbuffer = []
+                if len(outputbuffer) > outputbuffersize_lines:
+                    outputfile.writelines(outputbuffer)
+                    totallines += len(outputbuffer)
+                    outputbuffer = []
 
             outputfile.writelines(outputbuffer)
+            totallines += len(outputbuffer)
+
+    ## Test with islice. Not faster
+    ##
+    ## Islice, Chunks n = 1000
+    ## We're done. Took 2864.780461 seconds in total for 32454885 lines. Avg 11328.925703 lines/sec.
+    ## Total thread running time: 7140.146623134613 sec. Avg: 4545.408759 lines/sec
+    ##
+    ## With reading per line:
+    ## We're done. Took 1595.845968 seconds in total for 32454885 lines. Avg 20337.103740 lines/sec.
+    ## Total thread running time: 4849.047528266907 sec. Avg: 6693.043285 lines/sec
+
+
+    # with open(file, "r") as inputfile:
+    #     with open(dstfile, "a") as outputfile:
+    #         outputbuffer = []
+    #
+    #         while True:
+    #             inputlines = list(itertools.islice(inputfile, inputchunck))
+    #             totallines += len(inputlines)
+    #
+    #             if not inputlines:
+    #                 break
+    #
+    #
+    #             for inputline in inputlines:
+    #                 outputbuffer.append(transformline(inputline))
+    #
+    #                 if len(outputbuffer) > outputbuffersize_lines:
+    #                     outputfile.writelines(outputbuffer)
+    #                     outputbuffer = []
+    #
+    #         outputfile.writelines(outputbuffer)
 
     end = time.time()
 
@@ -114,7 +126,7 @@ def transformcsvfiles(directory: str):
     if directory[-1] == "/":
         directory = directory[0:-1]
 
-    outputdir = directory + "/output"
+    outputdir = directory + "/output2"
 
     if not os.path.exists(outputdir):
         os.mkdir(outputdir)
