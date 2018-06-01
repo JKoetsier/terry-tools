@@ -10,6 +10,7 @@ fi
 sed -E \
 -e 's/"([[:digit:]]+)\/([[:digit:]]+)\/([[:digit:]]+) ([[:digit:]]+:[[:digit:]]+:[[:digit:]]+) (\+[[:digit:]]+:[[:digit:]]+)?"/"\3\-\2-\1 \4"/g' \
 -e 's/"1899-([[:digit:]]+-[[:digit:]]+ [[:digit:]]+:[[:digit:]]+:[[:digit:]]+)"/"1970-\1"/g' \
+-e 's/"9476-([[:digit:]]+-[[:digit:]]+ [[:digit:]]+:[[:digit:]]+:[[:digit:]]+)"/"2018-\1"/g' \
 -e 's/,"",/,NULL,/g' \
 -e 's/,"",/,NULL,/g' \
 -e 's/,""[[:space:]]*$/,NULL/g' \

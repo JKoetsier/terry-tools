@@ -23,7 +23,10 @@ def transformdates(line: str):
                   "\"\g<year>-\g<month>-\g<day> \g<time>\"", line)
 
 def transformbogusdates(line: str):
-    return re.sub(r'"1899-(?P<rest>\d+-\d+ \d+:\d+:\d+)"', '"1970-\g<rest>"', line)
+    result = line
+    result = re.sub(r'"1899-(?P<rest>\d+-\d+ \d+:\d+:\d+)"', '"1970-\g<rest>"', result)
+    result = re.sub(r'"9476-(?P<rest>\d+-\d+ \d+:\d+:\d+)"', '"2018-\g<rest>"', result)
+    return result
 
 
 def transformemptystrings(line: str) -> str:
