@@ -23,9 +23,12 @@ HEADER=$(head -1 $FILENAME)
 
 for file in x*; do
     if [ "$(head -1 $file)" != "$HEADER" ]; then
-	cat <(echo $HEADER) $file > $file
+	    cat <(echo $HEADER) $file > tmpfile
+        mv tmpfile "$NAME.$file.$EXT"
+        rm $file
+	else
+	    mv $file "$NAME.$file.$EXT"
     fi
-    mv $file "$NAME.$file.$EXT"
 done
 
 mv $FILENAME "$FILENAME.full"
