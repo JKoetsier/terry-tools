@@ -129,7 +129,7 @@ def transformcsvfiles(directory: str):
     if directory[-1] == "/":
         directory = directory[0:-1]
 
-    outputdir = directory + "/output2"
+    outputdir = directory + "/output_mysql_postgres"
 
     if not os.path.exists(outputdir):
         os.mkdir(outputdir)
