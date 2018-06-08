@@ -45,13 +45,6 @@ def transformintegers(line: str) -> str:
     return result
 
 
-def escapeoctalcharacters(line: str) -> str:
-    result = line
-    result = re.sub(r'"(?P<before>[A-Za-z0-9_:.\\]*)\\(?P<number>\d+)(?P<after>[A-Za-z0-9_:.\\]*)"',
-                    '"\g<before>\\\\\g<number>\g<after>"', result, flags=re.U)
-    return result
-
-
 def transformweirdproviderkeys(line: str) -> str:
     result = line
     result = re.sub(r'"CTF[^"]+?"', '"CTF_transformedkey"', result, flags=re.U)
@@ -63,10 +56,8 @@ def transformline(line: str) -> str:
 
     result = transformdates(result)
     result = transformbogusdates(result)
-    # result = transformemptystrings(result)
     result = transformbooleans(result)
     result = transformintegers(result)
-    # result = escapeoctalcharacters(result)
     result = transformweirdproviderkeys(result)
 
     return result
