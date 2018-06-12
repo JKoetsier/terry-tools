@@ -34,6 +34,7 @@ Get-ChildItem -Path $tmpdir -Include * -File -Recurse | foreach { $_.Delete()}
 foreach ($Row in $DataSet.Tables[0].Rows)
 {
     $tableName = $($Row[0])
+
     #Specify the output location of your dump file
     $filename = $tableName + ".csv"
     $extractFile = $directory + "\" + $filename
@@ -52,7 +53,7 @@ foreach ($Row in $DataSet.Tables[0].Rows)
         $SqlAdapter.Fill($DataSet)
         $connection.Close()
 
-        $DataSet.Tables[0]  | Export-Csv $tmpFile -NoTypeInformation
+        $DataSet.Tables[0]  | Export-Csv $tmpFile -NoTypeInformation -Encoding UTF8
         Move-Item $tmpFile $extractFile
 
     }

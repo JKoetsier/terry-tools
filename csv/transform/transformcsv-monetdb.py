@@ -148,7 +148,7 @@ def transformcsvfiles(directory: str):
     if not os.path.exists(outputdir):
         os.mkdir(outputdir)
 
-    files = [f for f in os.listdir(directory) if os.path.isfile(directory + "/" + f) and f.endswith(".csv") and f.startswith("CtfSource")]
+    files = [f for f in os.listdir(directory) if os.path.isfile(directory + "/" + f) and f.endswith(".csv")]
 
     files_w_length = []
 
