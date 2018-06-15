@@ -12,6 +12,8 @@ globaltotallines = 0
 globalrunningtime = 0.0
 lock = threading.Condition()
 
+onlyfiles = ["Listing.csv"]
+
 '''
 Changes occurrences of the format "20/12/2016 20:08:51 +00:00" or "20/12/2016 20:08:51" to
 "2016-12-20 20:08:51"
@@ -45,10 +47,9 @@ def transformintegers(line: str) -> str:
     return result
 
 
-def transformweirdproviderkeys(line: str) -> str:
+def escapeoctals(line: str) -> str:
     result = line
-    result = re.sub(r'"CTF[^"]+?"', '"CTF_transformedkey"', result, flags=re.U)
-    result = re.sub(r'"O:PXA[^"]+?', '"O:PXA_transformedkey"', result, flags=re.U)
+    result = re.sub(r'\\(?P<digit>\d+)', r'\\\\\g<digit>', result)
     return result
 
 
@@ -59,7 +60,7 @@ def transformline(line: str) -> str:
     result = transformbogusdates(result)
     result = transformbooleans(result)
     result = transformintegers(result)
-    result = transformweirdproviderkeys(result)
+    result = escapeoctals(result)
 
     return result
 
@@ -79,7 +80,7 @@ def transformcsv(file: str, outputdir: str) -> int:
 
     ## Per line
     with open(file, "r", encoding="UTF-8") as inputfile:
-        with open(dstfile, "a", encoding="UTF-8") as outputfile:
+        with open(dstfile, "w", encoding="UTF-8") as outputfile:
             outputbuffer = []
             for inputline in inputfile:
                 outputbuffer.append(transformline(inputline))
@@ -149,7 +150,7 @@ def transformcsvfiles(directory: str):
     if not os.path.exists(outputdir):
         os.mkdir(outputdir)
 
-    files = [f for f in os.listdir(directory) if os.path.isfile(directory + "/" + f) and f.endswith(".csv")]
+    files = [f for f in os.listdir(directory) if os.path.isfile(directory + "/" + f) and f.endswith(".csv") and (len(onlyfiles) == 0 or f in onlyfiles)]
 
     files_w_length = []
 
