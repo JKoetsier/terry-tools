@@ -62,8 +62,8 @@ def transformcsv(file: str, outputdir: str) -> int:
     totallines = 0
 
     ## Per line
-    with open(file, "r") as inputfile:
-        with open(dstfile, "a") as outputfile:
+    with open(file, "r", encoding="UTF-8") as inputfile:
+        with open(dstfile, "a", encoding="UTF-8") as outputfile:
             outputbuffer = []
             for inputline in inputfile:
                 outputbuffer.append(transformline(inputline))

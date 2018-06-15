@@ -48,6 +48,7 @@ def transformintegers(line: str) -> str:
 def transformweirdproviderkeys(line: str) -> str:
     result = line
     result = re.sub(r'"CTF[^"]+?"', '"CTF_transformedkey"', result, flags=re.U)
+    result = re.sub(r'"O:PXA[^"]+?', '"O:PXA_transformedkey"', result, flags=re.U)
     return result
 
 
@@ -77,8 +78,8 @@ def transformcsv(file: str, outputdir: str) -> int:
     totallines = 0
 
     ## Per line
-    with open(file, "r") as inputfile:
-        with open(dstfile, "a") as outputfile:
+    with open(file, "r", encoding="UTF-8") as inputfile:
+        with open(dstfile, "a", encoding="UTF-8") as outputfile:
             outputbuffer = []
             for inputline in inputfile:
                 outputbuffer.append(transformline(inputline))
