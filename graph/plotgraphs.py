@@ -24,10 +24,10 @@ def get_files_to_plot(files: List[str]) -> Dict[str, str]:
     return files_to_plot
 
 
-# Finds all files of the form xxxxxxxx_dbname_timings.csv in directory and plots
+# Finds all files of the form xxxxxxxx_dbname_resulttimes.csv in directory and plots
 # the last file per database type by default
 def get_timings_to_plot(directory: str) -> Dict[str, str]:
-    files = [f for f in os.listdir(directory) if f.endswith("timings.csv")]
+    files = [f for f in os.listdir(directory) if f.endswith("resulttimes.csv")]
     files.sort(reverse=True)
 
     return get_files_to_plot(files)
@@ -120,23 +120,24 @@ def plot_multiple_files(filepaths: List[str], labels: List[str], savefile=None):
         stdds = [v["stddev"] for k, v in values.items()]
 
         # Get rid of weird Postgres vals for now TODO
-        avgs = [a if a < 30000 else 0 for a in avgs]
-        stdds = [s if s < 30000 else 0 for s in avgs]
+        # avgs = [a if a < 30000 else 0 for a in avgs]
+        # stdds = [s if s < 30000 else 0 for s in avgs]
 
         if len(xlabels) == 0:
-            xlabels = ["q" + k for k, v in values.items()]
+            xlabels = values.keys()
             ind = np.arange(len(avgs))
 
         plt.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
 
-    plt.ylabel("Time (microseconds)")
+    plt.ylabel("Time (\265s)")
     plt.title("All db times")
     plt.ylim(ymin=0)
-    plt.xticks(ind, xlabels)
+    plt.xticks(ind, xlabels, rotation='vertical')
+    plt.tick_params(axis='x', labelsize=7)
     plt.legend()
 
     if savefile is not None:
-        plt.savefig(savefile, format="png")
+        plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
     else:
         plt.show()
 
@@ -145,7 +146,7 @@ def plot_single_file(filepath: str, dbname: str, savefile=None):
 
     avgs = [v["average"] for k, v in values.items()]
     stdds = [v["stddev"] for k, v in values.items()]
-    xlabels = ["q" + k for k, v in values.items()]
+    xlabels = values.keys()
 
     ind = np.arange(len(avgs))
     width = 0.35
@@ -154,13 +155,14 @@ def plot_single_file(filepath: str, dbname: str, savefile=None):
 
     plt.figure(figsize=figsize)
     plt.bar(ind, avgs, width, yerr=stdds, alpha=0.4, color='b', error_kw=error_config)
-    plt.ylabel("Time (microseconds)")
+    plt.ylabel("Time (\265s)")
     plt.title(dbname)
     plt.ylim(ymin=0)
-    plt.xticks(ind, xlabels)
+    plt.xticks(ind, xlabels, rotation='vertical')
+    plt.tick_params(axis='x', labelsize=7)
 
     if savefile is not None:
-        plt.savefig(savefile, format="png")
+        plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
     else:
         plt.show()
 
@@ -174,15 +176,18 @@ def plot_systemstats(filepath: str, dbname: str, savefile=None):
     times = [t - times[0] for t in times]  # Reset to 0
 
     plt.figure(figsize=figsize)
-    plt.ylabel("CPU Usage 0-1")
+    plt.ylabel("CPU Usage (0..1)")
+    plt.xlabel("Time (ms)")
     plt.title(dbname)
     plt.ylim(ymin=0)
 
     for h in headers:
-        plt.plot(times, csv[h])
+        plt.plot(times, csv[h], linewidth=1)
+
+    plt.legend(ncol=4, fontsize=9)
 
     if savefile is not None:
-        plt.savefig(savefile, format="png")
+        plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
     else:
         plt.show()
 
