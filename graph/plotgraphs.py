@@ -96,7 +96,8 @@ def get_values_for_file(filepath: str) -> Dict[str, Dict[float, float]]:
                 continue
 
             query = row[0]
-            vals = [int(i) if i != "" else 0 for i in row[1:]]
+            # from ns to ms
+            vals = [int(i) / (1000 * 1000) if i != "" else 0 for i in row[1:]]
 
             values[query] = {
                 "average": np.mean(vals),
@@ -119,17 +120,13 @@ def plot_multiple_files(filepaths: List[str], labels: List[str], savefile=None):
         avgs = [v["average"] for k, v in values.items()]
         stdds = [v["stddev"] for k, v in values.items()]
 
-        # Get rid of weird Postgres vals for now TODO
-        # avgs = [a if a < 30000 else 0 for a in avgs]
-        # stdds = [s if s < 30000 else 0 for s in avgs]
-
         if len(xlabels) == 0:
             xlabels = values.keys()
             ind = np.arange(len(avgs))
 
         plt.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
 
-    plt.ylabel("Time (\265s)")
+    plt.ylabel("Time (ms)")
     plt.title("All db times")
     plt.ylim(ymin=0)
     plt.xticks(ind, xlabels, rotation='vertical')
@@ -155,7 +152,7 @@ def plot_single_file(filepath: str, dbname: str, savefile=None):
 
     plt.figure(figsize=figsize)
     plt.bar(ind, avgs, width, yerr=stdds, alpha=0.4, color='b', error_kw=error_config)
-    plt.ylabel("Time (\265s)")
+    plt.ylabel("Time (ms)")
     plt.title(dbname)
     plt.ylim(ymin=0)
     plt.xticks(ind, xlabels, rotation='vertical')
@@ -166,25 +163,110 @@ def plot_single_file(filepath: str, dbname: str, savefile=None):
     else:
         plt.show()
 
+
+
+def subplot(fig, rows, cols, index):
+    ax = fig.add_subplot(rows, 1, index)
+    ax.grid(True, alpha=0.3, linestyle="dashed")
+    ax.set_ylim(ymin=0)
+    ax.spines["left"].set_position("zero")
+    ax.spines["bottom"].set_position("zero")
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    ax.autoscale(tight=True)
+
+    return ax
+
 # time,userTicks,niceTicks,sysTicks,idleTicks,ioWaitTicks,irqTicks,softIrqTicks,stealTicks,totalTicks,cpuLoad,cpuLoad0,cpuLoad1,cpuLoad2,cpuLoad3,cpuLoad4,cpuLoad5,cpuLoad6,cpuLoad7,loadAvg1,loadAvg5,loadAvg15,usedMemory,totalMemory,usedSwap,totalSwap,totalReads,totalWrites
 def plot_systemstats(filepath: str, dbname: str, savefile=None):
     firstrow = pandas.read_csv(filepath, nrows=1).columns
-    headers = [h for h in firstrow if h.startswith("cpuLoad") and len(h) > len("cpuLoad")]
+
 
     csv = pandas.read_csv(filepath)
     times = csv.time
     times = [t - times[0] for t in times]  # Reset to 0
 
-    plt.figure(figsize=figsize)
-    plt.ylabel("CPU Usage (0..1)")
-    plt.xlabel("Time (ms)")
-    plt.title(dbname)
-    plt.ylim(ymin=0)
+    have_swap = csv["totalSwap"][0] > 0
+    total_plots = 3
+    current_plot = 1
+
+    if have_swap:
+        total_plots += 1
+
+
+    # Plot CPU loads per core
+    headers = [h for h in firstrow if h.startswith("cpuLoad") and len(h) > len("cpuLoad")]
+
+    thisfigsize = (figsize[0], figsize[1] * 3) # Triple height
+
+    fig = plt.figure(figsize=thisfigsize)
+    fig.subplots_adjust(hspace=0.4)
+    fig.suptitle(dbname)
+
+    ax = subplot(fig, total_plots, 1, current_plot)
+    ax.set_ylabel("CPU Usage (0..1)")
+    ax.set_xlabel("Time (ms)")
+    ax.set_title("CPU Usage")
 
     for h in headers:
-        plt.plot(times, csv[h], linewidth=1)
+        ax.plot(times, csv[h], linewidth=1)
 
-    plt.legend(ncol=4, fontsize=9)
+    # Plot avg CPU Load
+    cpu_load = [v / 100.0 for v in csv["cpuLoad"]]
+    ax.plot(times, cpu_load, linewidth=3)
+
+    ax.legend(ncol=4, fontsize=9)
+
+    # Memory usage plot
+    current_plot += 1
+    ax = subplot(fig, total_plots, 1, current_plot)
+
+
+    totalMemory = [v / (1024 * 1024) for v in csv["totalMemory"]]
+    usedMemory = [v / (1024*1024) for v in csv["usedMemory"]]
+
+    ax.plot(times, usedMemory, linewidth=1)
+    ax.fill_between(times, 0, usedMemory, facecolor="lightblue")
+    ax.fill_between(times, usedMemory, totalMemory, facecolors="white")
+    ax.set_ylabel("Memory Usage (MB)")
+    ax.set_xlabel("Time (ms)")
+    ax.set_title("Memory Usage")
+
+    # Swap Plot
+    if have_swap:
+        current_plot += 1
+        ax = subplot(fig, total_plots, 1, current_plot)
+
+        totalSwap = [v / (1024 * 1024) for v in csv["totalSwap"]]
+        usedSwap = [v / (1024*1024) for v in csv["usedSwap"]]
+
+        ax.plot(times, usedSwap, linewidth=1)
+        ax.fill_between(times, 0, usedSwap, facecolor="green")
+        ax.fill_between(times, usedSwap, totalSwap, facecolor="white")
+
+        ax.set_ylabel("Swap Usage (MB)")
+        ax.set_xlabel("Time (ms)")
+        ax.set_title("Swap Usage")
+
+
+    # IO usage plot
+    current_plot += 1
+    ax = subplot(fig, total_plots, 1, current_plot)
+
+    totalReads = csv["totalReads"]
+    totalWrites = csv["totalWrites"]
+
+    # Normalise
+    reads =  [0] + [totalReads[i + 1] - r for i, r in enumerate(totalReads[:-1])]
+    writes = [0] + [totalWrites[i + 1] - w for i, w in enumerate(totalWrites[:-1])]
+
+    ax.plot(times, reads, linewidth=1, label="Reads")
+    ax.plot(times, writes, linewidth=1, label="Writes")
+
+    ax.set_ylabel("Bytes")
+    ax.set_xlabel("Time (ms)")
+    ax.set_title("I/O Usage")
+    ax.legend(fontsize=9)
 
     if savefile is not None:
         plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
