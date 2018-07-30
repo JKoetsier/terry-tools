@@ -26,12 +26,17 @@ def get_files_to_plot(files: List[str]) -> Dict[str, str]:
 
 # Finds all files of the form xxxxxxxx_dbname_resulttimes.csv in directory and plots
 # the last file per database type by default
-def get_timings_to_plot(directory: str) -> Dict[str, str]:
+def get_result_timings_to_plot(directory: str) -> Dict[str, str]:
     files = [f for f in os.listdir(directory) if f.endswith("resulttimes.csv")]
     files.sort(reverse=True)
 
     return get_files_to_plot(files)
 
+def get_response_timings_to_plot(directory: str) -> Dict[str, str]:
+    files = [f for f in os.listdir(directory) if f.endswith("responsetimes.csv")]
+    files.sort(reverse=True)
+
+    return get_files_to_plot(files)
 
 def get_systemstats_to_plot(directory: str) -> Dict[str, str]:
     files = [f for f in os.listdir(directory) if f.endswith("systemstats.csv")]
@@ -41,9 +46,9 @@ def get_systemstats_to_plot(directory: str) -> Dict[str, str]:
 
 
 def plot_from_directory(directory: str):
-    timings_to_plot = get_timings_to_plot(directory)
+    result_timings_to_plot = get_result_timings_to_plot(directory)
 
-    for dbname, file in timings_to_plot.items():
+    for dbname, file in result_timings_to_plot.items():
         outputfile = directory + "/" + file + ".png"
 
         plot_single_file(directory + "/" + file, dbname, outputfile)
@@ -53,7 +58,26 @@ def plot_from_directory(directory: str):
     all = []
     labels = []
 
-    for dbname, file in timings_to_plot.items():
+    for dbname, file in result_timings_to_plot.items():
+        all.append(directory + "/" + file)
+        labels.append(dbname)
+
+    outputfile = directory + "/all.png"
+    plot_multiple_files(all, labels, outputfile)
+
+    response_timings_to_plot = get_response_timings_to_plot(directory)
+
+    for dbname, file in response_timings_to_plot.items():
+        outputfile = directory + "/" + file + ".png"
+
+        plot_single_file(directory + "/" + file, dbname, outputfile)
+
+
+    ## Plot all in one graph
+    all = []
+    labels = []
+
+    for dbname, file in response_timings_to_plot.items():
         all.append(directory + "/" + file)
         labels.append(dbname)
 
@@ -61,14 +85,14 @@ def plot_from_directory(directory: str):
     plot_multiple_files(all, labels, outputfile)
 
     ## Plot all dbs against each other
-    combinations = list(itertools.combinations(timings_to_plot, r=2))
+    combinations = list(itertools.combinations(response_timings_to_plot, r=2))
 
     for combination in combinations:
         outputfile = directory + "/" + combination[0] + "_" + combination[1] + ".png"
 
         files = []
-        files.append(directory + "/" + timings_to_plot[combination[0]])
-        files.append(directory + "/" + timings_to_plot[combination[1]])
+        files.append(directory + "/" + response_timings_to_plot[combination[0]])
+        files.append(directory + "/" + response_timings_to_plot[combination[1]])
 
         labels = []
         labels.append(combination[0])
@@ -127,10 +151,11 @@ def plot_multiple_files(filepaths: List[str], labels: List[str], savefile=None):
         plt.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
 
     plt.ylabel("Time (ms)")
-    plt.title("All db times")
+    # plt.title("All db times")
     plt.ylim(ymin=0)
     plt.xticks(ind, xlabels, rotation='vertical')
     plt.tick_params(axis='x', labelsize=7)
+    plt.grid(True, alpha=0.3, linestyle="dashed")
     plt.legend()
 
     if savefile is not None:
@@ -153,10 +178,11 @@ def plot_single_file(filepath: str, dbname: str, savefile=None):
     plt.figure(figsize=figsize)
     plt.bar(ind, avgs, width, yerr=stdds, alpha=0.4, color='b', error_kw=error_config)
     plt.ylabel("Time (ms)")
-    plt.title(dbname)
+    # plt.title(dbname)
     plt.ylim(ymin=0)
     plt.xticks(ind, xlabels, rotation='vertical')
     plt.tick_params(axis='x', labelsize=7)
+    plt.grid(True, alpha=0.3, linestyle="dashed")
 
     if savefile is not None:
         plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
@@ -201,7 +227,7 @@ def plot_systemstats(filepath: str, dbname: str, savefile=None):
 
     fig = plt.figure(figsize=thisfigsize)
     fig.subplots_adjust(hspace=0.4)
-    fig.suptitle(dbname)
+    # fig.suptitle(dbname)
 
     ax = subplot(fig, total_plots, 1, current_plot)
     ax.set_ylabel("CPU Usage (0..1)")
