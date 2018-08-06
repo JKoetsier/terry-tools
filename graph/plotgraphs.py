@@ -1,3 +1,11 @@
+# plotgraphs.py
+#
+# When a directory is provided as argument, this script plots the last runs of each database system
+#
+# When a file is provided, it is assumed to be a mapping file, see mappingfile_example.txt
+# The output file location can be provided as a second argument when a graph is plotted from a mapping file
+
+
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -172,25 +180,18 @@ def plot_multiple_files(filepaths: List[str], labels: List[str] = None, savefile
     maxbarlength = max([v["average"] + v["stderr"] for v in allvalues])
     break_point = find_break_point(allavgs)
 
-    axtop = None
-    axbottom = None
+    ax = fig.subplots(1, 1)
+
+    maxbottombarlength = None
 
     if break_point is not None:
-        axtop, axbottom = fig.subplots(2, 1, sharex=True)
-        mintop = min([v["average"] - v["stderr"] for v in allvalues if v["average"] > break_point])
         maxbottombarlength = max([ v["average"] + v["stderr"] for v in allvalues if v["average"] < break_point])
 
-        axtop.set_ylim(ymin=mintop * 0.95, ymax=maxbarlength * 1.05)
-
-        axbottom.set_ylim(0, maxbottombarlength)
-
-        axtop.spines['bottom'].set_visible(False)
-        axtop.tick_params(axis='x', bottom=False, top=False)
-        axtop.grid(True, alpha=0.3, linestyle="dashed")
-        axbottom.spines['top'].set_visible(False)
+        ax.set_ylim(0, maxbottombarlength * 1.05)
+        ax.spines['top'].set_visible(False)
     else:
-        axbottom = fig.subplots(1, 1, sharex=True)
-        axbottom.set_ylim(ymin=0, ymax=maxbarlength * 1.05)
+        ax = fig.subplots(1, 1)
+        ax.set_ylim(ymin=0, ymax=maxbarlength * 1.05)
 
     for idx, values in enumerate(filevalues):
         avgs = [v["average"] for k, v in values.items()]
@@ -201,36 +202,33 @@ def plot_multiple_files(filepaths: List[str], labels: List[str] = None, savefile
             ind = np.arange(len(avgs))
 
         if labels is not None:
-            axbottom.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
+            ax.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
 
-            if axtop is not None:
-                axtop.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
         else:
-            axbottom.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config)
+            ax.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config)
 
-            if axtop is not None:
-                axtop.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config)
+        if break_point is not None:
+            for idx2, xy in enumerate(zip(ind, avgs)):
+                if xy[1] > break_point:
+                    # yxtext modulo calculation places annotations at different offsets so they don't everlap
+                    ax.annotate('%s' % int(xy[1]),
+                                      xy=(xy[0], maxbottombarlength),
+                                      textcoords='offset points',
+                                      fontsize=6,
+                                      color=colors[idx],
+                                      xytext=(0, 20 + (idx % len(filevalues)) * 20 + (idx2 % 2) * 10)
+                    )
 
-        # if axtop is not None:
-        #     for xy in zip(ind, avgs):
-        #         axtop.annotate('%s' % int(xy[1]), xy=xy, textcoords='data')
 
-
-    axbottom.xaxis.tick_bottom()
-    axbottom.set_xticks(ind)
-    axbottom.set_xticklabels(xlabels, rotation='vertical')
-    axbottom.set_ylabel("Time (ms)")
-    axbottom.tick_params(axis='x', labelsize=7)
-    axbottom.grid(True, alpha=0.3, linestyle="dashed")
+    ax.xaxis.tick_bottom()
+    ax.set_xticks(ind)
+    ax.set_xticklabels(xlabels, rotation='vertical')
+    ax.set_ylabel("Time (ms)")
+    ax.tick_params(axis='x', labelsize=7)
+    ax.grid(True, alpha=0.3, linestyle="dashed")
 
     if labels is not None:
-        if axtop is not None:
-            axtop.legend()
-        else:
-            axbottom.legend()
-
-    if axtop is not None:
-        draw_break_marks(axtop, axbottom)
+        ax.legend()
 
     if savefile is not None:
         plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
@@ -238,22 +236,13 @@ def plot_multiple_files(filepaths: List[str], labels: List[str] = None, savefile
         plt.show()
 
 def find_break_point(values: List[float]):
-    # break_multiplier = 4
-    #
-    # values_sorted = list(reversed(sorted(values)))
-    #
-    # for i in range(0, len(values_sorted) - 1):
-    #     if values_sorted[i+1] * break_multiplier < values_sorted[i] and values_sorted[i+1] > 0:
-    #
-    #         return values_sorted[i+1] * 1.1
-    #
-    # return None
-    factor = 2
+    factor = 3
 
     outliers = find_outliers(values, factor)
 
     if len(outliers) == 0:
         return None
+
     revlist = list(reversed(sorted(values)))
 
     idx = revlist.index(min(outliers))
@@ -405,11 +394,44 @@ def plot_systemstats(filepath: str, dbname: str, savefile=None):
     else:
         plt.show()
 
+def plot_from_mapping_file(mapping_file: str, output_file=None):
+    files = []
+    labels = []
+
+    with open(mapping_file) as f:
+        for line in f:
+            splittedLine = line.split()
+
+            if len(splittedLine) < 2:
+                print("Missing label in mapping file")
+                exit(1)
+
+            if not os.path.isfile(splittedLine[0]):
+                print("Invalid file in mapping file {}".format(splittedLine[0]))
+                exit(1)
+
+            files.append(splittedLine[0])
+            labels.append(str.join(" ", splittedLine[1:]))
+
+    plot_multiple_files(files, labels, output_file)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Call program with directory parameter:")
-        print("{} directory".format(sys.argv[0]))
+    if len(sys.argv) < 2:
+        print("Call program with directory parameter or mapping file:")
+        print("{} directory|mapping file".format(sys.argv[0]))
         exit(1)
 
-    plot_from_directory(sys.argv[1])
+    if os.path.isdir(sys.argv[1]):
+        plot_from_directory(sys.argv[1])
+    elif os.path.isfile(sys.argv[1]):
+
+        if len(sys.argv) > 2:
+            output_file = sys.argv[2]
+        else:
+            output_file = None
+
+        plot_from_mapping_file(sys.argv[1], output_file)
+    else:
+        print("Path does not exist")
+        exit(1)
