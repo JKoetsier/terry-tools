@@ -1,14 +1,27 @@
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 import sys
 import os
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import csv
 import pandas
 import itertools
 
 figsize=(15,5)
 
+dbnames_to_label = {
+    "mysql": "MySQL",
+    "postgres": "PostgreSQL",
+    "monetdb": "MonetDB",
+    "mssql": "SQL Server"
+}
+
+def get_label_for_dbname(dbname: str) -> str:
+    if dbname in dbnames_to_label:
+        return dbnames_to_label[dbname]
+
+    return dbname
 
 ## Expects a list with files ordered in priority, of the form yyyymmdd_dbname_type.csv
 ## Returns one file per db
@@ -44,6 +57,11 @@ def get_systemstats_to_plot(directory: str) -> Dict[str, str]:
 
     return get_files_to_plot(files)
 
+def plot_timings(directory, files: List[str]):
+    for dbname, file in files.items():
+        outputfile = directory + "/" + file + ".png"
+
+        plot_single_file(directory + "/" + file, label=get_label_for_dbname(dbname), savefile=outputfile)
 
 def plot_from_directory(directory: str):
     result_timings_to_plot = get_result_timings_to_plot(directory)
@@ -51,8 +69,7 @@ def plot_from_directory(directory: str):
     for dbname, file in result_timings_to_plot.items():
         outputfile = directory + "/" + file + ".png"
 
-        plot_single_file(directory + "/" + file, dbname, outputfile)
-
+        plot_single_file(directory + "/" + file, label=get_label_for_dbname(dbname), savefile=outputfile)
 
     ## Plot all in one graph
     all = []
@@ -60,7 +77,7 @@ def plot_from_directory(directory: str):
 
     for dbname, file in result_timings_to_plot.items():
         all.append(directory + "/" + file)
-        labels.append(dbname)
+        labels.append(get_label_for_dbname(dbname))
 
     outputfile = directory + "/all.png"
     plot_multiple_files(all, labels, outputfile)
@@ -70,8 +87,7 @@ def plot_from_directory(directory: str):
     for dbname, file in response_timings_to_plot.items():
         outputfile = directory + "/" + file + ".png"
 
-        plot_single_file(directory + "/" + file, dbname, outputfile)
-
+        plot_single_file(directory + "/" + file, label=get_label_for_dbname(dbname), savefile=outputfile)
 
     ## Plot all in one graph
     all = []
@@ -95,8 +111,8 @@ def plot_from_directory(directory: str):
         files.append(directory + "/" + response_timings_to_plot[combination[1]])
 
         labels = []
-        labels.append(combination[0])
-        labels.append(combination[1])
+        labels.append(get_label_for_dbname(combination[0]))
+        labels.append(get_label_for_dbname(combination[1]))
 
         plot_multiple_files(files, labels, outputfile)
 
@@ -123,76 +139,166 @@ def get_values_for_file(filepath: str) -> Dict[str, Dict[float, float]]:
             # from ns to ms
             vals = [int(i) / (1000 * 1000) if i != "" else 0 for i in row[1:]]
 
-            values[query] = {
-                "average": np.mean(vals),
-                "stddev": np.std(vals)
-            }
+            mean = np.mean(vals)
+
+            if mean > 0:
+                values[query] = {
+                    "average": mean,
+                    "stderr": stats.sem(vals)
+                }
 
         return values
 
-def plot_multiple_files(filepaths: List[str], labels: List[str], savefile=None):
+def plot_multiple_files(filepaths: List[str], labels: List[str] = None, savefile=None):
     width = 1.0 / len(filepaths) - 0.1
 
     error_config = {'ecolor': '0.3'}
     xlabels = []
     ind = []
     colors = ['r', 'b', 'g']
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
 
-    for idx, f in enumerate(filepaths):
-        values = get_values_for_file(f)
+
+    filevalues = []
+
+    for filepath in filepaths:
+        values = get_values_for_file(filepath)
+        filevalues.append(values)
+
+
+    allvalues = [v for filevals in filevalues for k, v in filevals.items()]
+
+    allavgs = [v["average"] for v in allvalues]
+    maxbarlength = max([v["average"] + v["stderr"] for v in allvalues])
+    break_point = find_break_point(allavgs)
+
+    axtop = None
+    axbottom = None
+
+    if break_point is not None:
+        axtop, axbottom = fig.subplots(2, 1, sharex=True)
+        mintop = min([v["average"] - v["stderr"] for v in allvalues if v["average"] > break_point])
+        maxbottombarlength = max([ v["average"] + v["stderr"] for v in allvalues if v["average"] < break_point])
+
+        axtop.set_ylim(ymin=mintop * 0.95, ymax=maxbarlength * 1.05)
+
+        axbottom.set_ylim(0, maxbottombarlength)
+
+        axtop.spines['bottom'].set_visible(False)
+        axtop.tick_params(axis='x', bottom=False, top=False)
+        axtop.grid(True, alpha=0.3, linestyle="dashed")
+        axbottom.spines['top'].set_visible(False)
+    else:
+        axbottom = fig.subplots(1, 1, sharex=True)
+        axbottom.set_ylim(ymin=0, ymax=maxbarlength * 1.05)
+
+    for idx, values in enumerate(filevalues):
         avgs = [v["average"] for k, v in values.items()]
-        stdds = [v["stddev"] for k, v in values.items()]
+        stdds = [v["stderr"] for k, v in values.items()]
 
         if len(xlabels) == 0:
             xlabels = values.keys()
             ind = np.arange(len(avgs))
 
-        plt.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
+        if labels is not None:
+            axbottom.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
 
-    plt.ylabel("Time (ms)")
-    # plt.title("All db times")
-    plt.ylim(ymin=0)
-    plt.xticks(ind, xlabels, rotation='vertical')
-    plt.tick_params(axis='x', labelsize=7)
-    plt.grid(True, alpha=0.3, linestyle="dashed")
-    plt.legend()
+            if axtop is not None:
+                axtop.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config, label=labels[idx])
+        else:
+            axbottom.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config)
 
-    if savefile is not None:
-        plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
-    else:
-        plt.show()
+            if axtop is not None:
+                axtop.bar(ind + idx * width, avgs, width, yerr=stdds, alpha=0.4, color=colors[idx], error_kw=error_config)
 
-def plot_single_file(filepath: str, dbname: str, savefile=None):
-    values = get_values_for_file(filepath)
+        # if axtop is not None:
+        #     for xy in zip(ind, avgs):
+        #         axtop.annotate('%s' % int(xy[1]), xy=xy, textcoords='data')
 
-    avgs = [v["average"] for k, v in values.items()]
-    stdds = [v["stddev"] for k, v in values.items()]
-    xlabels = values.keys()
 
-    ind = np.arange(len(avgs))
-    width = 0.35
+    axbottom.xaxis.tick_bottom()
+    axbottom.set_xticks(ind)
+    axbottom.set_xticklabels(xlabels, rotation='vertical')
+    axbottom.set_ylabel("Time (ms)")
+    axbottom.tick_params(axis='x', labelsize=7)
+    axbottom.grid(True, alpha=0.3, linestyle="dashed")
 
-    error_config = {'ecolor': '0.3'}
+    if labels is not None:
+        if axtop is not None:
+            axtop.legend()
+        else:
+            axbottom.legend()
 
-    plt.figure(figsize=figsize)
-    plt.bar(ind, avgs, width, yerr=stdds, alpha=0.4, color='b', error_kw=error_config)
-    plt.ylabel("Time (ms)")
-    # plt.title(dbname)
-    plt.ylim(ymin=0)
-    plt.xticks(ind, xlabels, rotation='vertical')
-    plt.tick_params(axis='x', labelsize=7)
-    plt.grid(True, alpha=0.3, linestyle="dashed")
+    if axtop is not None:
+        draw_break_marks(axtop, axbottom)
 
     if savefile is not None:
         plt.savefig(savefile, format="png", pad_inches=0.2, bbox_inches='tight')
     else:
         plt.show()
 
+def find_break_point(values: List[float]):
+    # break_multiplier = 4
+    #
+    # values_sorted = list(reversed(sorted(values)))
+    #
+    # for i in range(0, len(values_sorted) - 1):
+    #     if values_sorted[i+1] * break_multiplier < values_sorted[i] and values_sorted[i+1] > 0:
+    #
+    #         return values_sorted[i+1] * 1.1
+    #
+    # return None
+    factor = 2
 
+    outliers = find_outliers(values, factor)
+
+    if len(outliers) == 0:
+        return None
+    revlist = list(reversed(sorted(values)))
+
+    idx = revlist.index(min(outliers))
+
+    return (revlist[idx + 1] + revlist[idx]) / 2
+
+def find_outliers(values: List[float], factor=1.5):
+    vals = list(values)
+    outliers = []
+
+    avg = np.mean(vals)
+    max = avg * factor
+
+    this_outliers = []
+
+    for val in vals:
+        if val > max:
+            this_outliers.append(val)
+
+    for outlier in this_outliers:
+        vals.remove(outlier)
+        outliers.append(outlier)
+
+    return outliers
+
+
+
+def draw_break_marks(axtop, axbottom):
+    d = .01  # how big to make the diagonal lines in axes coordinates
+    kwargs = dict(transform=axtop.transAxes, color='k', clip_on=False)
+    axtop.plot((-d, +d), (-d, +d), **kwargs)  # top-left diagonal
+    axtop.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+    kwargs.update(transform=axbottom.transAxes)  # switch to the bottom axes
+    axbottom.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+    axbottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+
+def plot_single_file(filepath: str, label=None, savefile=None):
+    labels = [label] if label is not None else None
+
+    plot_multiple_files([filepath], labels=labels, savefile=savefile)
 
 def subplot(fig, rows, cols, index):
-    ax = fig.add_subplot(rows, 1, index)
+    ax = fig.add_subplot(rows, cols, index)
     ax.grid(True, alpha=0.3, linestyle="dashed")
     ax.set_ylim(ymin=0)
     ax.spines["left"].set_position("zero")
