@@ -1,0 +1,2 @@
+/Users/jaapkoetsier/Desktop/MasterThesis/msc-thesis-experiments-data/experiments_results/aws_tpch_mysql_sf1/indices/20180721115308_mysql_responsetimes.csv MySQL after creating indices
+/Users/jaapkoetsier/Desktop/MasterThesis/msc-thesis-experiments-data/experiments_results/aws_tpch_mysql_sf1/indices_tweak_settings/20180721120314_mysql_responsetimes.csv MySQL after tweaking configuration

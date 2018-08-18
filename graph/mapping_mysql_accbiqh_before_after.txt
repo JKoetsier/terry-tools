@@ -1,0 +1,2 @@
+/Users/jaapkoetsier/Desktop/MasterThesis/msc-thesis-experiments-data/experiments_results/accbiqh_no_indices/20180720121808_mysql_responsetimes.csv MySQL before indices
+/Users/jaapkoetsier/Desktop/MasterThesis/msc-thesis-experiments-data/experiments_results/accbiqh_indices/20180720134305_mysql_responsetimes.csv MySQL after indices
